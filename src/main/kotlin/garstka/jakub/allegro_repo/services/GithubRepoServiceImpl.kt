@@ -1,29 +1,31 @@
 package garstka.jakub.allegro_repo.services
 
-import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.treeToValue
 import garstka.jakub.allegro_repo.api.v1.GithubRepoDTO
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
-import org.springframework.web.client.exchange
 
 @Service
 class GithubRepoServiceImpl(val restTemplate:  RestTemplate = RestTemplate()): GithubRepoService {
+
     companion object{
-        const val TO_GET_NEWEST = "https://api.github.com/orgs/Allegro/repos?sort=pushed&direction=desc"
+        const val GITHUB_GRAPHQL = "https://api.github.com/graphql"
     }
 
-    override fun getNewestGithubRepo(): GithubRepoDTO {
+    override fun getNewestGithubRepo_apiv3(URL: String): GithubRepoDTO {
+        return restTemplate.getForObject(URL, Array<GithubRepoDTO>::class.java)!!.first()
+    }
+
+
+    override fun getNewestGithubRepo_apiv4(token: String, QUERY: String): GithubRepoDTO {
         val headers = HttpHeaders()
-        headers["Accept"] = "application/vnd.github.v3.full+json"
-        val entity = HttpEntity("parameters", headers)
-        return restTemplate.exchange<List<GithubRepoDTO>>(TO_GET_NEWEST,
-                HttpMethod.GET,
-                entity,
-                object : TypeReference<List<GithubRepoDTO>>() {}.type)!!.body!!.first()
+        headers.setBearerAuth(token)
+        val entity = HttpEntity(mapOf(Pair("query", QUERY)), headers)
+        val jsonNode = restTemplate.postForObject(GITHUB_GRAPHQL, entity, JsonNode::class.java)
+        return jacksonObjectMapper().treeToValue(jsonNode!!.get("data").get("organization").get("repositories").get("edges").get(0).get("node"))
     }
-
-
 }
