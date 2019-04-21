@@ -26,7 +26,7 @@ class GithubRepoServiceImplTest {
 
     @Mock
     private lateinit var restTemplate: RestTemplate
-    
+
     @Throws(Exception::class)
 
     @Before
